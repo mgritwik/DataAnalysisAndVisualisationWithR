@@ -1,0 +1,109 @@
+---
+title: "Statistical inference On Education attained based on Social conditions"
+output: 
+  html_document: 
+    fig_height: 4
+    highlight: pygments
+    theme: spacelab
+---
+
+## Setup
+
+### Load packages
+
+```{r load-packages, message = FALSE}
+library(ggplot2)
+library(dplyr)
+library(statsr)
+library(reshape2)
+```
+
+### Load data
+
+Make sure your data and R Markdown files are in the same directory. When loaded
+your data file will be called `gss`. Delete this note when before you submit 
+your work. 
+
+```{r load-data}
+load("gss.Rdata")
+```
+
+
+
+* * *
+
+## Part 1: Data
+```{r Data}
+#str(gss)
+colnames(gss)[colSums(is.na(gss))==0]
+colSums(is.na(gss))
+#Filter data based on reauired fields according to the Reasearch question.
+df2<-gss[c("sex","race","educ")]
+str(df2)
+#NA values are a small proportion, hence delete the corresponding rows
+df2<-df2[complete.cases(df2),]
+str(df2)
+```
+
+* * *
+
+## Part 2: Research question
+Research Question: Is "Highest year of attending school" dependent on Gender and Race ? <br />
+This is a quesion of Social importance as this would determine any Discrimination/conditions effecting people's Schooling based on Social Status like Gender and Race. 
+
+
+* * *
+
+## Part 3: Exploratory data analysis
+```{r Exploratory Data Analysis}
+
+summary(df2)
+
+ggplot(df2,aes(x=df2$educ))+geom_histogram()+labs(x="Highest year of school completed",y="Frequency",title="Frequency distribution of Highest year of school attended")
+
+boxplot(df2$educ~df2$sex,main="Distribution of Highest level Education across Gender",xlab="Gender",ylab = "Highest Education")
+boxplot(df2$educ~df2$race,main="Distribution of Highest level Education across Race",xlab = "Race", ylab = "Highest Education")
+col_both<-cbind(df2$race,df2$sex)
+ggplot(aes(y = df2$educ, x = df2$race, fill = df2$sex), data = df2) + geom_boxplot()+labs(x="Race and Gender",y="Highest Education",title = "Distribution of Highest level Education across Race and Gender",fill="Gender")
+
+
+```
+
+```{r by-means}
+df2 %>%
+  group_by(race,sex) %>%
+  summarise(mean_highest_education = mean(educ))
+```
+
+
+* * *
+
+## Part 4: Inference
+
+Null Hypothesis: There is no relationship between Highest education and Gender and race.<br/>
+Alternative Hypothesis: There is relationship between Highest education and Gender and race.
+
+```{r inference for Research question}
+#Hypothesis test for just Gender vs Highest education achieved
+inference(y = educ, x = sex, data = df2, statistic = "mean", type = "ht", null = 0, 
+          alternative = "twosided", method = "theoretical")
+
+#Chi squared test
+count_matrix<-df2 %>%
+   group_by(race,sex) %>%
+   summarise(sum_highest_education = sum(educ))
+count_matrix
+#Get a 2d count matrix
+cont_matrix<-matrix(data=count_matrix$sum_highest_education,ncol = 2,byrow = TRUE)
+colnames(cont_matrix)<-c("male","female")
+rownames(cont_matrix)<-c("white","black","other")
+cont_matrix
+chisq <- chisq.test(cont_matrix)
+chisq
+chisq$p.value
+
+
+
+
+```
+Conclusion: Since p-value is less than significance level(0.05) We reject the Null Hypothesis and conclude that There is a significant relationship between Gender, Race and he Highest education received. 
